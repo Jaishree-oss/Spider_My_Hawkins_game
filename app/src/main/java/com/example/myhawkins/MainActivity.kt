@@ -12,7 +12,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -45,8 +44,7 @@ class MainActivity : ComponentActivity() {
 fun Hawkins() {
     val coroutineScope = rememberCoroutineScope()
     var gameStarted by remember { mutableStateOf(false) }
-    var VenecaScore by remember { mutableStateOf(5f) }
-    val unlock = remember { mutableStateListOf<Pair<Int, Int>>() }
+    var vecnaScore by remember { mutableStateOf(5f) }
     val visited = remember { mutableStateListOf<Pair<Int, Int>>() }
     var gameOver by remember { mutableStateOf(false) }
     var gameWon by remember { mutableStateOf(false) }
@@ -75,26 +73,25 @@ fun Hawkins() {
                 val rand = Random.nextFloat()
                 when {
                     (r == 4 && c == 0) || (r == exitRow && c == exitColumn) -> "None"
-                    rand < 0.12f -> "Flamethrower"
-                    rand < 0.24f -> "Psychic Power"
-                    rand < 0.38f -> "Demogorgon"
-                    rand < 0.50f -> "Mind Flayer"
+                    rand < 0.15f -> "Flamethrower"
+                    rand < 0.28f -> "Psychic Power"
+                    rand < 0.42f -> "Demogorgon"
+                    rand < 0.55f -> "Mind Flayer"
                     else -> "None"
                 }
             }
         }
     }
 
-    var clickedrow by remember { mutableStateOf(4) }
-    var clickedcolumn by remember { mutableStateOf(0) }
+    var playerRow by remember { mutableStateOf(4) }
+    var playerColumn by remember { mutableStateOf(0) }
 
-    // Game Clock
     LaunchedEffect(gameStarted, gameOver) {
         if (gameStarted && !gameOver) {
             while (!gameOver) {
                 delay(1000)
-                VenecaScore += 1f
-                if (score <= 0f || VenecaScore >= score) {
+                vecnaScore += 1f
+                if (score <= 0f || vecnaScore >= score) {
                     gameOver = true
                     gameWon = false
                 }
@@ -102,7 +99,6 @@ fun Hawkins() {
         }
     }
 
-    //  Shake Effect
     LaunchedEffect(triggerDamageFlash) {
         if (triggerDamageFlash) {
             shakeAnim.animateTo(12f, animationSpec = tween(40, easing = LinearEasing))
@@ -114,7 +110,6 @@ fun Hawkins() {
         }
     }
 
-    // Animation
     val infiniteTransition = rememberInfiniteTransition(label = "Chime")
     val pulseScale by infiniteTransition.animateFloat(
         initialValue = 1.0f,
@@ -133,7 +128,6 @@ fun Hawkins() {
             .background(Color.White)
             .offset(x = shakeAnim.value.dp)
     ) {
-        // Status Bar
         Row(
             modifier = Modifier
                 .statusBarsPadding()
@@ -144,7 +138,7 @@ fun Hawkins() {
             Text(text = "INV: $activePowerUpName", color = Color(0xFFFF007F), fontSize = 14.sp, fontWeight = FontWeight.Bold)
             Text(text = "HEALTH: ${score.toInt()}", color = Color(0xFF00AA00), fontSize = 18.sp, fontWeight = FontWeight.Bold)
             Text(
-                text = "VECNA: ${VenecaScore.toInt()}",
+                text = "VECNA: ${vecnaScore.toInt()}",
                 color = Color.Red,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
@@ -152,7 +146,6 @@ fun Hawkins() {
             )
         }
 
-        // DICE LAYOUT
         Column(
             modifier = Modifier
                 .padding(start = 16.dp, top = 80.dp)
@@ -185,7 +178,7 @@ fun Hawkins() {
                 val right = size.width * 0.75f
                 val top = size.height * 0.25f
                 val bottom = size.height * 0.75f
-                //DICE CREATION
+
                 when (dice) {
                     1 -> drawCircle(Color.Cyan, dotRadius, center)
                     2 -> {
@@ -229,7 +222,6 @@ fun Hawkins() {
             )
         }
 
-        //GRID
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -240,74 +232,76 @@ fun Hawkins() {
                 repeat(5) { row ->
                     Row {
                         repeat(5) { column ->
-                            val isCurrentPos = (clickedrow == row && clickedcolumn == column)
+                            val isCurrentPos = (playerRow == row && playerColumn == column)
                             val isVisited = (row to column) in visited
                             val isUpsideDownBlock = gridChoice[row][column] == "Upside world"
 
+                            val isAdjacent = (row == playerRow && (column == playerColumn + 1 || column == playerColumn - 1)) ||
+                                    (column == playerColumn && (row == playerRow + 1 || row == playerRow - 1))
+
                             val cellBackgroundColor = when {
-                                isVisited || isCurrentPos -> if (isUpsideDownBlock) Color.Transparent else Color(0xFF90EE90) // Safe path
-                                else -> Color.Black // Hidden blocks
+                                isVisited || isCurrentPos -> if (isUpsideDownBlock) Color.Transparent else Color(0xFF90EE90)
+                                else -> Color.Black
                             }
-                            //BORDER OF GRIDS BASED ON BLOCKS
+
                             val cellBorderColor = when {
-                                isCurrentPos -> Color(0xFF00E5FF) // Neon Cyan for player piece
-                                isVisited && isUpsideDownBlock -> Color(0xFFFF073A) // Glowing Neon Red for traps
-                                isVisited -> Color(0xFF00FF66) // Neon Green path border
-                                else -> Color(0xFF00E5FF) // Standard Neon Cyan hidden cells
+                                isCurrentPos -> Color(0xFF00E5FF)
+                                isVisited && isUpsideDownBlock -> Color(0xFFFF073A)
+                                isVisited -> Color(0xFF00FF66)
+                                else -> Color(0xFF00E5FF)
                             }
 
                             Box(
                                 modifier = Modifier
                                     .size(68.dp)
-                                    .border(1.dp, cellBorderColor) // 1.dp thick border so they join tightly
+                                    .border(1.dp, cellBorderColor)
                                     .background(cellBackgroundColor)
                                     .clickable {
-                                        if (!gameOver && !isDiceRolling) {
-                                            val isAdjacent = (row == clickedrow && (column == clickedcolumn + 1 || column == clickedcolumn - 1)) ||
-                                                    (column == clickedcolumn && (row == clickedrow + 1 || row == clickedrow - 1))
+                                        if (!gameOver && !isDiceRolling && isAdjacent) {
+                                            val minReqd = grid[row][column]
+                                            if (dice >= minReqd) {
+                                                if (!gameStarted) gameStarted = true
 
-                                            if (isAdjacent) {
-                                                val minReqd = grid[row][column]
-                                                if (dice >= minReqd) {
-                                                    if (!gameStarted) gameStarted = true
+                                                visited.add(playerRow to playerColumn)
+                                                playerRow = row
+                                                playerColumn = column
+                                                visited.add(playerRow to playerColumn)
 
-                                                    visited.add(clickedrow to clickedcolumn)
-                                                    clickedrow = row
-                                                    clickedcolumn = column
-                                                    visited.add(clickedrow to clickedcolumn)
+                                                // 1. Environmental Damage calculation (Always triggers in Upside Down)
+                                                if (isUpsideDownBlock) {
+                                                    score -= 15f
+                                                    triggerDamageFlash = true
+                                                }
 
-                                                    if (gridChoice[clickedrow][clickedcolumn] == "Upside world") {
-                                                        score -= 15f
+                                                // 2. Combat & Power-Up Collection layer (Completely independent)
+                                                val element = gridElements[playerRow][playerColumn]
+
+                                                if (element == "Flamethrower" || element == "Psychic Power") {
+                                                    hasPowerUp = true
+                                                    activePowerUpName = element
+                                                } else if (element == "Demogorgon" || element == "Mind Flayer") {
+                                                    if (hasPowerUp) {
+                                                        // Defend cleanly using inventory weapon asset
+                                                        hasPowerUp = false
+                                                        activePowerUpName = "None"
+                                                    } else {
+                                                        // Missing combat countermeasures, sustain penalty damage
+                                                        score -= 30f
                                                         triggerDamageFlash = true
                                                     }
+                                                }
 
-                                                    val element = gridElements[clickedrow][clickedcolumn]
-                                                    if (element == "Flamethrower" || element == "Psychic Power") {
-                                                        hasPowerUp = true
-                                                        activePowerUpName = element
-                                                    } else if (element == "Demogorgon" || element == "Mind Flayer") {
-                                                        if (hasPowerUp) {
-                                                            hasPowerUp = false
-                                                            activePowerUpName = "None"
-                                                        } else {
-                                                            score -= 30f
-                                                            triggerDamageFlash = true
-                                                        }
-                                                    }
-
-                                                    if (clickedrow == exitRow && clickedcolumn == exitColumn) {
-                                                        gameOver = true
-                                                        gameWon = score > VenecaScore
-                                                    } else if (score <= 0f || VenecaScore >= score) {
-                                                        gameOver = true
-                                                        gameWon = false
-                                                    }
+                                                if (playerRow == exitRow && playerColumn == exitColumn) {
+                                                    gameOver = true
+                                                    gameWon = score > vecnaScore
+                                                } else if (score <= 0f || vecnaScore >= score) {
+                                                    gameOver = true
+                                                    gameWon = false
                                                 }
                                             }
                                         }
                                     }
                             ) {
-                               //FOR UPSIDE DOWN BLOCK
                                 if (isVisited && isUpsideDownBlock) {
                                     Image(
                                         painter = painterResource(id = R.drawable.vines),
@@ -317,10 +311,9 @@ fun Hawkins() {
                                     )
                                 }
 
-                                // EXTRA POWERUPS
                                 if (isCurrentPos) {
                                     Image(
-                                        painter = painterResource(id = R.drawable.spider), // Player character token piece
+                                        painter = painterResource(id = R.drawable.spider),
                                         contentDescription = "Player Blue Spider Icon",
                                         contentScale = ContentScale.Crop,
                                         modifier = Modifier.size(80.dp).align(Alignment.Center)
@@ -334,11 +327,16 @@ fun Hawkins() {
                                         else -> ""
                                     }
                                     if (symbol.isNotEmpty()) {
-                                        Text(text = symbol, fontSize = 18.sp, modifier = Modifier.align(Alignment.Center))
+                                        Text(text = symbol, fontSize = 22.sp, modifier = Modifier.align(Alignment.Center))
                                     }
                                 } else {
-                                    // Hidden state text rules
-                                    Text(text = "${grid[row][column]}", color = Color.White, fontSize = 14.sp, modifier = Modifier.align(Alignment.Center))
+                                    val textToShow = if (isAdjacent) "${grid[row][column]}" else ""
+                                    Text(
+                                        text = textToShow,
+                                        color = Color.White,
+                                        fontSize = 14.sp,
+                                        modifier = Modifier.align(Alignment.Center)
+                                    )
                                 }
                             }
                         }
@@ -367,7 +365,7 @@ fun Hawkins() {
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = if (gameWon) "YOU SURVIVED!\nGate Closed Successfully." else "GAME OVER!\nVecna Claimed Hawkins.",
+                        text = if (gameWon) "YOU WIN!\nGate Closed Successfully." else "GAME OVER!\nVecna Claimed Hawkins.",
                         color = Color.White,
                         fontWeight = FontWeight.Bold,
                         fontSize = 20.sp,
